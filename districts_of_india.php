@@ -3,8 +3,8 @@ $colours = [
   'default' => 'rgba(227,207,243, 1)',
   'active' => 'rgba(255,189,189, 1)',
   'hover' => 'rgba(255,213,247, 1)',
-  'own' => 'rgba(159,101,255, 1)',
-  'other' => 'rgba(241,203,154, 1)',
+  'own' => 'green', //'rgba(159,101,255, 1)',
+  'other' => 'blue', //'rgba(241,203,154, 1)',
 ];
 ?>
 <!DOCTYPE html>
@@ -31,11 +31,13 @@ $colours = [
       fill: <?= $colours['own'];?>;
       stroke: <?= $colours['own'];?>;
     }
-    div.other {
+    .other {
       background-color: <?= $colours['other'];?>;
+      color: #fff;
     }
-    div.own {
+    .own {
       background-color: <?= $colours['own'];?>;
+      color: #fff;
     }
   </style>
   <style>
@@ -92,10 +94,15 @@ $colours = [
     }
     #districts_wrapper{
       position: absolute;
-      bottom: 0;
+      /*bottom: 0;*/
+      top: 50vh;
       right: 0;
       max-height: 50vh;
       margin-right: 15px;
+    }
+    #districts_wrapper li {
+      padding: .5em .75em;
+      list-style-position: inside;
     }
   </style>
 </head>
@@ -111,8 +118,8 @@ require( 'images/districts_of_india.svg' );
   <span>Legend</span>
   <ul>
     <?php
-    foreach( ['BHI' => 'own', 'Independant' => 'other'] as $title => $key ):
-      printf( '<li style="background-color:%s">%s District</li>', $colours[$key], $title );
+    foreach( ['BHI Affiliated' => 'own', 'Independant' => 'other'] as $title => $key ):
+      printf( '<li class="%s">%s</li>', $key, $title );
     endforeach;
     ?>
   </ul>
@@ -282,28 +289,33 @@ function dropDistricts(){
       if( firstRun )
         districts_inner.insertAdjacentHTML("beforeend", "<li class='" + district_object.relationship + "'>" + district_object.name + " (" + state.attributes.title.value + ")</li>"); 
 
-      TweenMax.to( district, 0, {
-        scale: 3,
-        transformOrigin: 'center',
-        onComplete: () => {
-          district.classList.add( district_object.relationship );
-        }
-      });
+      district.classList.add( district_object.relationship );
       TweenMax.to( district, 1, {
-        scale: 1,
+        scale: 4,
         transformOrigin: 'center',
+
         onComplete: () => {
-          lastDroppedDistrict++;
-          if( loop || firstRun ){
-            if( lastDroppedDistrict == order.length){
-              firstRun = false;
-              lastDroppedDistrict = 0;
-              if( !loop )
-                return;
-            }
-            dropDistricts();
-          }
-        },
+          setTimeout( () => {
+            TweenMax.to( district, 1, {
+              scale: 1,
+              transformOrigin: 'center',
+              onComplete: () => {
+                lastDroppedDistrict++;
+                if( loop || firstRun ){
+                  if( lastDroppedDistrict == order.length){
+                    firstRun = false;
+                    lastDroppedDistrict = 0;
+                    if( !loop )
+                      return;
+                  }
+                  setTimeout(() => {
+                    dropDistricts();
+                  }, 1500)
+                }
+              },
+            });
+          }, 1500);
+        }
       });
     // }, i * 1500);
   // }
