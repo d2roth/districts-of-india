@@ -75,6 +75,7 @@ $colours = [
       position: fixed;
       top: 0;
       right: 0;
+      margin-top: 15px;
       margin-right: 15px;
     }
     #legend span{
@@ -94,6 +95,7 @@ $colours = [
       bottom: 0;
       right: 0;
       max-height: 50vh;
+      margin-right: 15px;
     }
   </style>
 </head>
@@ -232,6 +234,10 @@ require( 'images/districts_of_india.svg' );
     },
   ];
 
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout( () => { dropDistricts() }, 3500 )
+});
 var index = 0;
 let map = document.querySelector( '#india-map' );
 let districts_inner = document.querySelector( '#districts_inner' );
