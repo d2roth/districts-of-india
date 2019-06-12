@@ -1,36 +1,54 @@
+<?php
+$colours = [
+  'default' => 'rgba(227,207,243, 1)',
+  'active' => 'rgba(255,189,189, 1)',
+  'hover' => 'rgba(255,213,247, 1)',
+  'own' => 'rgba(159,101,255, 1)',
+  'other' => 'rgba(241,203,154, 1)',
+];
+?>
 <!DOCTYPE html>
 <html>
 <head>
   <title></title>
   <style>
+    g {
+      fill: <?= $colours['default'];?>;
+      stroke: <?= $colours['default2'];?>;
+    }
     g.active{
-      fill: orange;
+      fill: <?= $colours['active'];?>;
     }
     path.active {
-      fill: green;
+      fill: <?= $colours['active'];?>;
+      stroke: <?= $colours['active'];?>;
     }
     svg .other {
-      fill: brown;
+      fill: <?= $colours['other'];?>;
+      stroke: <?= $colours['other'];?>;
     }
     svg .own {
-      fill: blue;
+      fill: <?= $colours['own'];?>;
+      stroke: <?= $colours['own'];?>;
     }
     div.other {
-      background-color: brown;
+      background-color: <?= $colours['other'];?>;
     }
     div.own {
-      background-color: blue;
+      background-color: <?= $colours['own'];?>;
     }
   </style>
   <style>
     svg {
-      max-width: 400px;
+      max-width: 100%;
+      max-height: 100vh;
     }
     #india-map {
       fill: #38381B;
     }
     #india-map g:hover {
-      fill: orange;
+      fill: <?= $colours['hover'];?>;
+      stroke: <?= $colours['hover'];?>;
     }
     #info-box{
       position: absolute;
@@ -51,6 +69,31 @@
       background: black;
       color: #fff;
       padding: 5px;
+      display: none;
+    }
+    #legend {
+      position: fixed;
+      top: 0;
+      right: 0;
+      margin-right: 15px;
+    }
+    #legend span{
+      font-weight: 700;
+    }
+    #legend ul {
+      padding-left: 0;
+      margin-top: 5px;
+    }
+    #legend li {
+      list-style: none;
+      padding: 5px;
+      margin-bottom: 5px;
+    }
+    #districts_wrapper{
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      max-height: 50vh;
     }
   </style>
 </head>
@@ -62,6 +105,20 @@ require( 'images/districts_of_india.svg' );
 
 <div id="info-box"></div>
 <div id="timer">0</div>
+<div id="legend">
+  <span>Legend</span>
+  <ul>
+    <?php
+    foreach( ['BHI' => 'own', 'Independant' => 'other'] as $title => $key ):
+      printf( '<li style="background-color:%s">%s District</li>', $colours[$key], $title );
+    endforeach;
+    ?>
+  </ul>
+</div>
+
+<div id="districts_wrapper">
+  <ol id="districts_inner"></ol>
+</div>
 
 <script>
   var order = [
@@ -177,32 +234,122 @@ require( 'images/districts_of_india.svg' );
 
 var index = 0;
 let map = document.querySelector( '#india-map' );
+let districts_inner = document.querySelector( '#districts_inner' );
 let iteration = 0;
 
-// map.querySelectorAll('g[entity_type="state"]').forEach(function(g){
-//   g.setAttribute( 'transition', 'all .5s' );
-// });
-
+// Open more information for each district on click
 order.forEach(function(e, i){
   let district = map.querySelector('path[title="' + order[i].name + '"]');
-  district.classList.add( order[i].relationship );
+  // district.classList.add( order[i].relationship );
   district.onclick = function( event ){
     showInfo( order[i], event, district );
   };
 });
 
-map.querySelectorAll('g').forEach(function(e){
-  e.addEventListener('mouseover', () => hoverState(e), false);
-  e.addEventListener('mouseout', () => resetState(e), false);
-  // console.log(e);
-});
+function resetState(state){
+  TweenMax.to(state, 3, {
+    scale: 1,
+  });
+}
+
+function hoverState(state){
+  let scale = 2;
+  TweenMax.to(state, 3, {
+    scale: scale,
+    transformOrigin: 'center',
+  });
+}
+
+let lastDroppedDistrict = 0;
+let firstRun = true;
+let loop = false;
+function dropDistricts(){
+  // Some calculations suggest I can screen capture about 13 frames/second
+  // for (let i = 0;i < order.length; i++ ){
+    // setTimeout(function(){
+      let district_object = order[lastDroppedDistrict];
+      let district = map.querySelector('path[title="' + district_object.name + '"]');
+      let state = district.closest('g');
+
+      map.appendChild(state);
+      state.appendChild(district);
+      if( firstRun )
+        districts_inner.insertAdjacentHTML("beforeend", "<li class='" + district_object.relationship + "'>" + district_object.name + " (" + state.attributes.title.value + ")</li>"); 
+
+      TweenMax.to( district, 0, {
+        scale: 3,
+        transformOrigin: 'center',
+        onComplete: () => {
+          district.classList.add( district_object.relationship );
+        }
+      });
+      TweenMax.to( district, 1, {
+        scale: 1,
+        transformOrigin: 'center',
+        onComplete: () => {
+          lastDroppedDistrict++;
+          if( loop || firstRun ){
+            if( lastDroppedDistrict == order.length){
+              firstRun = false;
+              lastDroppedDistrict = 0;
+              if( !loop )
+                return;
+            }
+            dropDistricts();
+          }
+        },
+      });
+    // }, i * 1500);
+  // }
+}
+
+function run(scale, offset){
+
+  // First remove all active classes
+  map.querySelectorAll( '.active' ).forEach(function(e){
+    TweenMax.to(e, 1, {scale: 1})
+  });
+  
+  let district = map.querySelector('path[title="' + order[index].name + '"]');
+  let state = district.closest('g');
+
+  // Move the state to the end
+  map.appendChild( state );
+  state.appendChild( district );
+
+  district.classList.add('active');
+  state.classList.add('active');
+  
+  let scaleDistrict = function(){
+    TweenMax.to(state, 1, {
+      scale: 1.1,
+      onComplete:function(){
+        TweenMax.to(district, .5, {
+          scale: scale,
+          transformOrigin: 'center'
+        });
+      }
+    });
+  }
+
+  TweenMax.to(state, .5, {
+    scale: scale,
+    transformOrigin: 'center',
+    onComplete: scaleDistrict
+  });
+  
+
+  index++;
+  if( index > order.length )
+    index = 0;
+}
 
 function trimSvgWhitespace( svg ) {
-    const box = svg.getBBox(), // <- get the visual boundary required to view all children
-          viewBox = [box.x, box.y, box.width, box.height].join(" ");
+  const box = svg.getBBox(), // <- get the visual boundary required to view all children
+        viewBox = [box.x, box.y, box.width, box.height].join(" ");
 
-    // set viewable area based on value above
-    svg.setAttribute("viewBox", viewBox);
+  // set viewable area based on value above
+  svg.setAttribute("viewBox", viewBox);
 }
 
 function showInfo( data, event, district ){
@@ -235,112 +382,17 @@ function showInfo( data, event, district ){
   infoBox.classList.add( data.relationship );
   infoBox.innerHTML = template;
   infoBox.style.display = "block";
-  infoBox.style.left = districtBox.x + districtBox.width + 10 + "px";
-  infoBox.style.top = districtBox.y + districtBox.height + 10 + "px";
+  infoBox.style.x = districtBox.x + districtBox.width + 10 + "px";
+  infoBox.style.y = districtBox.y + districtBox.height + 10 + "px";
   // Yeah, we have the SVG in place but let's trim out the whitespace so the distrct is more clear
   trimSvgWhitespace( infoBox.querySelector('svg') );
 }
 
-function resetState(state){
-  TweenMax.to(state, 3, {
-    scale: 1,
-    xPercent: 0,
-    yPercent: 0,
-  });
-}
-
-function hoverState(state){
-  let scale = 2;
-  let offset = "50%";
-  TweenMax.to(state, 3, {
-    scale: scale,
-    xPercent: offset,
-    yPercent: offset,
-  });
-}
-
-/*
-  Animation Plan:
-    1. 
-
-*/
-
-function playAnimations(){
-  setTimeout(function(){
-    map.querySelectorAll('g').forEach(function(e, i){
-      setTimeout(function(){
-        hoverState(e);
-        snap();
-        setTimeout(function(){
-          resetState(e);  
-          snap();
-        }, 2500);
-      }, 1000 * i);
-    })
-  }, 300)
-}
-
-function run(scale, offset){
-
-  // First remove all active classes
-  map.querySelectorAll( '.active' ).forEach(function(e){
-    e.classList.remove('own');
-    TweenMax.to(e, 1, {scale: 1, xPercent: 0, yPercent: 0})
-    TweenMax.to(e, 1, {scale: 1, xPercent: 0, yPercent: 0})
-  });
-  
-  console.log( order[index].name);
-  let district = map.querySelector('path[title="' + order[index].name + '"]');
-
-  let state = district.closest('g');
-
-  // Move the state to the end
-  map.appendChild( state );
-  state.appendChild( district );
-
-  state.classList.add( 'own' );
-  district.classList.add( 'own' );
-
-  // let scale = 1.5;
-  // let xPercent = -25;
-  // let yPercent = -25;
-
-  // let scale = 1;
-  let xPercent = scale > 1 ? scale * -13.33 : 0;
-  let yPercent = xPercent;
-  
-  let scaleDistrict = function(){
-    TweenMax.to(state, 1, {scale:1, xPercent: 0, yPercent: 0,
-      onComplete:function(){
-        TweenMax.to(district, .5, {scale:scale, xPercent: xPercent, yPercent: yPercent});
-      }
-    });
-  }
-
-  offset = scale != 1 ? scale / -13.33 : 0;
-  console.log( scale, offset )
-  TweenMax.to(state, .5, {
-    scale: scale,
-    xPercent: offset,
-    yPercent: offset,
-    onComplete: scaleDistrict
-    // onComplete: function(){
-    //   setTimeout( function(){
-    //     TweenMax.to(state, .5, {scale:1, xPercent: 0, yPercent: 0});
-    //   }, 1000)}
-  });
-  
-
-  index++;
-  if( index > order.length )
-    index = 0;
-}
-
-const timer = document.querySelector('#timer');
-let initialValue = timer.innerText;
-setInterval(function(){
-  timer.innerText = initialValue++;
-}, 1);
+// const timer = document.querySelector('#timer');
+// let initialValue = timer.innerText;
+// setInterval(function(){
+//   timer.innerText = initialValue++;
+// }, 1);
 
 
 function snap(){
